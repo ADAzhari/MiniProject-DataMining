@@ -127,12 +127,15 @@ if uploaded_file:
             st.subheader("🌳 Hierarchical Clustering (Manual)")
 
             exclude_cols = [
-                "nama", "nim", "nama (opsional)", "nim (opsional)",
+                "apakah kamu siap meluangkan waktu sekitar 5 menit untuk mengisi kuesioner ini?",
+                "nama (opsional)",
+                "nim (opsional)",
                 "apa alasan utama kamu belajar?"
             ]
-            df_filtered = df.drop(columns=exclude_cols, errors="ignore")
+            df_filtered = df.drop(columns=[c for c in exclude_cols if c in df.columns], errors="ignore")
             numeric_df = df_filtered.select_dtypes(include=[float, int])
 
+            st.write("Kolom yang digunakan untuk clustering:", list(numeric_df.columns))
             if numeric_df.empty:
                 st.error("❌ Tidak ada kolom numerik untuk clustering.")
             else:
