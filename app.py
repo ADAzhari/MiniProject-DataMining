@@ -7,7 +7,7 @@ from io import BytesIO
 
 # ===== IMPORT MODULES =====
 from modules.utils import read_csv
-from modules.preprocessing import clean_data, transform_data
+from modules.preprocessing import clean_data, transform_data, normalize_data
 from modules.clusteringKMeans import kmeans, find_best_k
 from modules.pca import pca_manual
 from modules.clusteringHierarchical import hierarchical_manual, plot_dendrogram_manual
@@ -39,10 +39,12 @@ if uploaded_file:
                 "tugas": ["kewajiban", "tugas/ujian", "tugas", "kuliah"]
             }
 
-        # === Transformasi data ===
         df_rows = transform_data(rows, keywords_dict)
+
+# === Tambahkan tahap normalisasi ===
+        df_rows = normalize_data(df_rows, method="minmax")
+
         df = pd.DataFrame(df_rows)
-        
         df_original = df.copy()
 
         # === BUAT TAB MENU === # <-- TAMBAH TAB 4
@@ -58,7 +60,7 @@ if uploaded_file:
             st.subheader("🧹 Hasil Preprocessing Data")
             st.dataframe(df_original.head())
             buffer_pre = BytesIO()
-            df_original.to_csv(buffer_pre, index=False, encoding="utf-8-sig")
+            df_original.to_csv(buffer_pre, index=False, encoding="utf-8-sig", float_format="%.6f")
             buffer_pre.seek(0)
             st.download_button("⬇️ Download Hasil Preprocessing (CSV)", buffer_pre, "hasil_preprocessing.csv", "text/csv")
 
@@ -93,7 +95,7 @@ if uploaded_file:
                 ax.set_xlabel("PC 1"); ax.set_ylabel("PC 2"); ax.legend()
                 st.pyplot(fig)
                 buffer = BytesIO()
-                df_kmeans.to_csv(buffer, index=False, encoding="utf-8-sig")
+                df_kmeans.to_csv(buffer, index=False, encoding="utf-8-sig", float_format="%.6f")
                 buffer.seek(0)
                 st.download_button("⬇️ Download Hasil Clustering (CSV)", buffer, "hasil_clustering_kmeans.csv", "text/csv")
 
@@ -125,7 +127,7 @@ if uploaded_file:
                 st.pyplot(fig)
                 st.subheader("💾 Simpan Hasil")
                 buffer_hier = BytesIO()
-                df_hier.to_csv(buffer_hier, index=False, encoding="utf-8-sig")
+                df_hier.to_csv(buffer_hier, index=False, encoding="utf-8-sig", float_format="%.6f")
                 buffer_hier.seek(0)
                 st.download_button("⬇️ Download hasil clustering (CSV)", buffer_hier, f"hasil_clustering_hierarchical_{method}.csv", "text/csv")
 
@@ -194,7 +196,7 @@ if uploaded_file:
                 # Tombol download
                 st.subheader("💾 Simpan Hasil")
                 buffer_dbscan = BytesIO()
-                df_dbscan.to_csv(buffer_dbscan, index=False, encoding="utf-8-sig")
+                df_dbscan.to_csv(buffer_dbscan, index=False, encoding="utf-8-sig", float_format="%.6f")
                 buffer_dbscan.seek(0)
                 st.download_button(
                     "⬇️ Download hasil clustering DBSCAN (CSV)", 

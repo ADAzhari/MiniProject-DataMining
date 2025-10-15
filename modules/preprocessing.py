@@ -1,3 +1,23 @@
+import numpy as np
+
+# ==========================================================
+# 🌐 GLOBAL CONFIG
+# ==========================================================
+IDENTITY_COLS = [
+    "nama", 
+    "nim",
+    "nama (opsional)", 
+    "nim (opsional)",
+    "umur", 
+    "semester",
+    "apa alasan utama kamu belajar?",
+    "apakah kamu siap meluangkan waktu sekitar 5 menit untuk mengisi kuesioner ini?"
+]
+
+
+# ==========================================================
+# 🧹 CLEANING
+# ==========================================================
 def clean_data(rows, drop_cols):
     """
     Membersihkan data mentah:
@@ -12,24 +32,26 @@ def clean_data(rows, drop_cols):
             key = k.strip().lower()
             if key not in [c.lower() for c in drop_cols]:
                 if isinstance(v, str):
-                    v = v.strip().lower()
+                    v = " ".join(v.strip().lower().split())
                 new_r[key] = v
         cleaned_rows.append(new_r)
     print("✅ Data Cleaning selesai.")
     return cleaned_rows
 
+
+# ==========================================================
+# 🔄 TRANSFORMATION
+# ==========================================================
 def transform_data(rows, keywords_dict):
     """
     Transformasi data:
-    - Konversi ordinal dan likert ke angka
-    - Scan jawaban alasan belajar jadi OHE multi-label
-    - Pertahankan kolom identitas tanpa diubah
+    - Konversi ordinal & likert ke angka
+    - One-Hot Encoding untuk alasan belajar
+    - Hapus kolom identitas dari hasil akhir
     """
     if not rows:
         print("❌ Data kosong!")
         return []
-
-    identity_cols = ["nama", "nim", "umur", "semester", "apa alasan utama kamu belajar?"]
 
     # --- MAPPING ORDINAL ---
     ordinal_maps = {
@@ -59,7 +81,7 @@ def transform_data(rows, keywords_dict):
 
         # Likert
         for k, v in r.items():
-            if k.lower() in identity_cols:
+            if k.lower() in [c.lower() for c in IDENTITY_COLS]:
                 continue
             if isinstance(v, str):
                 val = likert_text_to_num.get(v, None)
@@ -73,7 +95,7 @@ def transform_data(rows, keywords_dict):
             elif v is None:
                 r[k] = 3.0
 
-   # --- ONE-HOT ENCODING UNTUK "ALASAN BELAJAR" ---
+    # --- ONE-HOT ENCODING UNTUK "ALASAN BELAJAR" ---
     if ohe_col.lower() not in [k.lower() for k in rows[0].keys()]:
         print(f"⚠️ Kolom '{ohe_col}' tidak ditemukan di data.")
         print("Kolom yang ada:", list(rows[0].keys()))
@@ -81,40 +103,90 @@ def transform_data(rows, keywords_dict):
 
     transformed_rows = []
     for r in rows:
-        new_row = {k: v for k, v in r.items()}
-    
-        # Ambil jawaban dan normalisasi teks
+        new_row = {}
+
+        # Ambil jawaban alasan belajar
         jawaban = str(r.get(ohe_col, "")).lower()
         jawaban = jawaban.replace("/", " ").replace(",", " ").replace(".", " ").strip()
-    
+
+        # One-Hot Encoding berdasarkan keywords_dict
         for category, keyword_list in keywords_dict.items():
             colname = "alasan_" + category.lower().replace(" ", "_")
             new_row[colname] = 0
-        
             for kw in keyword_list:
-             # hapus juga tanda baca di keyword biar match adil
                 kw_clean = kw.lower().replace("/", " ").replace(",", " ").replace(".", " ").strip()
                 if kw_clean in jawaban:
                     new_row[colname] = 1
                     break
-    
+
+        # Tambahkan kolom non-identitas lainnya
+        for k, v in r.items():
+            if k.lower() not in [c.lower() for c in IDENTITY_COLS]:
+                new_row[k] = v
+
         transformed_rows.append(new_row)
 
-    for r in rows:
-        new_row = {k: v for k, v in r.items()}
-        jawaban = str(r.get(ohe_col, "")).lower()
-        print(f"\nJawaban asli: '{jawaban}'")
-        for category, keyword_list in keywords_dict.items():
-            colname = "alasan_" + category.lower().replace(" ", "_")
-            new_row[colname] = 0
-            for kw in keyword_list:
-                if kw.lower() in jawaban:
-                    print(f"  ✅ Cocok: '{kw}' → {colname}")
-                    new_row[colname] = 1
-                    break
-    transformed_rows.append(new_row)
-
-    print("✅ Transformasi data selesai.")
+    print("✅ Transformasi data selesai (kolom identitas dihapus).")
     return transformed_rows
 
 
+def normalize_data(rows, method="minmax"):
+    """
+    Normalisasi data numerik (kecuali OHE, kolom konstan, dan kolom identitas).
+    method:
+      - 'minmax' : skala 0–1
+      - 'zscore' : standarisasi (mean 0, std 1)
+    """
+    import numpy as np
+
+    if not rows:
+        print("❌ Data kosong!")
+        return []
+
+    # Tentukan kolom yang layak dinormalisasi
+    numeric_cols = []
+    for k in rows[0].keys():
+        values = [r.get(k) for r in rows]
+        if all(isinstance(v, (int, float)) for v in values):
+            unique_vals = set(values)
+            if (
+                len(unique_vals) > 1 and
+                not unique_vals.issubset({0, 1}) and
+                k.lower() not in [c.lower() for c in IDENTITY_COLS]
+            ):
+                numeric_cols.append(k)
+
+    if not numeric_cols:
+        print("⚠️ Tidak ada kolom numerik yang perlu dinormalisasi.")
+        return rows
+
+    data_matrix = np.array([[r[col] for col in numeric_cols] for r in rows], dtype=float)
+
+    # Ganti NaN dengan rata-rata kolom
+    if np.isnan(data_matrix).any():
+        col_means = np.nanmean(data_matrix, axis=0)
+        inds = np.where(np.isnan(data_matrix))
+        data_matrix[inds] = np.take(col_means, inds[1])
+
+    if method == "minmax":
+        min_vals = data_matrix.min(axis=0)
+        max_vals = data_matrix.max(axis=0)
+        denom = np.where(max_vals - min_vals == 0, 1, max_vals - min_vals)
+        normalized = (data_matrix - min_vals) / denom
+        
+    elif method == "zscore":
+        means = data_matrix.mean(axis=0)
+        stds = np.where(data_matrix.std(axis=0) == 0, 1, data_matrix.std(axis=0))
+        normalized = (data_matrix - means) / stds
+    else:
+        raise ValueError("method harus 'minmax' atau 'zscore'")
+
+    # Simpan hasil ke rows dengan pembulatan dan clamping
+    for i, r in enumerate(rows):
+        for j, col in enumerate(numeric_cols):
+            val = float(normalized[i][j])
+            val = max(0, min(1, round(val, 6))) if method == "minmax" else round(val, 6)
+            r[col] = val
+
+    print(f"✅ Normalisasi selesai ({method}) untuk {len(numeric_cols)} kolom (tanpa OHE/konstan/identitas).")
+    return rows
