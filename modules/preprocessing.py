@@ -1,17 +1,21 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+import streamlit as st
 
 # ==========================================================
 # 🌐 GLOBAL CONFIG
 # ==========================================================
 IDENTITY_COLS = [
-    "nama", 
+    "nama",
     "nim",
-    "nama (opsional)", 
+    "nama (opsional)",
     "nim (opsional)",
-    "umur", 
+    "umur",
     "semester",
     "apa alasan utama kamu belajar?",
-    "apakah kamu siap meluangkan waktu sekitar 5 menit untuk mengisi kuesioner ini?"
+    "apakah kamu siap meluangkan waktu sekitar 5 menit untuk mengisi kuesioner ini?",
 ]
 
 
@@ -55,18 +59,40 @@ def transform_data(rows, keywords_dict):
 
     # --- MAPPING ORDINAL ---
     ordinal_maps = {
-        "dalam sehari, berapa jam rata-rata kamu gunakan untuk media sosial (instagram, tiktok, x, dll) di luar kebutuhan kuliah?":
-            {'<1 jam': 1, '1–2 jam': 2, '3–4 jam': 3, '5–6 jam': 4, '>6 jam': 5},
-        "berapa rata-rata jam belajar mandiri kamu per minggu (di luar kelas)?":
-            {'<2 jam': 1, '2–4 jam': 2, '5–7 jam': 3, '8–10 jam': 4, '>10 jam': 5}
+        "dalam sehari, berapa jam rata-rata kamu gunakan untuk media sosial (instagram, tiktok, x, dll) di luar kebutuhan kuliah?": {
+            "<1 jam": 1,
+            "1–2 jam": 2,
+            "3–4 jam": 3,
+            "5–6 jam": 4,
+            ">6 jam": 5,
+        },
+        "berapa rata-rata jam belajar mandiri kamu per minggu (di luar kelas)?": {
+            "<2 jam": 1,
+            "2–4 jam": 2,
+            "5–7 jam": 3,
+            "8–10 jam": 4,
+            ">10 jam": 5,
+        },
     }
 
     # --- MAPPING SKALA LIKERT ---
     likert_text_to_num = {
-        "tidak pernah": 1.25, "jarang": 2.5, "lumayan sering": 3.75, "sangat sering": 5,
-        "sangat tidak bisa": 1, "tidak bisa": 2, "cukup bisa": 3, "bisa": 4, "sangat bisa": 5,
-        "sangat tidak puas": 1, "tidak puas": 2, "cukup puas": 3, "puas": 4, "sangat puas": 5,
-        "ya": 5, "tidak": 1
+        "tidak pernah": 1.25,
+        "jarang": 2.5,
+        "lumayan sering": 3.75,
+        "sangat sering": 5,
+        "sangat tidak bisa": 1,
+        "tidak bisa": 2,
+        "cukup bisa": 3,
+        "bisa": 4,
+        "sangat bisa": 5,
+        "sangat tidak puas": 1,
+        "tidak puas": 2,
+        "cukup puas": 3,
+        "puas": 4,
+        "sangat puas": 5,
+        "ya": 5,
+        "tidak": 1,
     }
 
     ohe_col = "apa alasan utama kamu belajar?"
@@ -114,7 +140,13 @@ def transform_data(rows, keywords_dict):
             colname = "alasan_" + category.lower().replace(" ", "_")
             new_row[colname] = 0
             for kw in keyword_list:
-                kw_clean = kw.lower().replace("/", " ").replace(",", " ").replace(".", " ").strip()
+                kw_clean = (
+                    kw.lower()
+                    .replace("/", " ")
+                    .replace(",", " ")
+                    .replace(".", " ")
+                    .strip()
+                )
                 if kw_clean in jawaban:
                     new_row[colname] = 1
                     break
@@ -150,9 +182,9 @@ def normalize_data(rows, method="minmax"):
         if all(isinstance(v, (int, float)) for v in values):
             unique_vals = set(values)
             if (
-                len(unique_vals) > 1 and
-                not unique_vals.issubset({0, 1}) and
-                k.lower() not in [c.lower() for c in IDENTITY_COLS]
+                len(unique_vals) > 1
+                and not unique_vals.issubset({0, 1})
+                and k.lower() not in [c.lower() for c in IDENTITY_COLS]
             ):
                 numeric_cols.append(k)
 
@@ -160,7 +192,9 @@ def normalize_data(rows, method="minmax"):
         print("⚠️ Tidak ada kolom numerik yang perlu dinormalisasi.")
         return rows
 
-    data_matrix = np.array([[r[col] for col in numeric_cols] for r in rows], dtype=float)
+    data_matrix = np.array(
+        [[r[col] for col in numeric_cols] for r in rows], dtype=float
+    )
 
     # Ganti NaN dengan rata-rata kolom
     if np.isnan(data_matrix).any():
@@ -173,7 +207,7 @@ def normalize_data(rows, method="minmax"):
         max_vals = data_matrix.max(axis=0)
         denom = np.where(max_vals - min_vals == 0, 1, max_vals - min_vals)
         normalized = (data_matrix - min_vals) / denom
-        
+
     elif method == "zscore":
         means = data_matrix.mean(axis=0)
         stds = np.where(data_matrix.std(axis=0) == 0, 1, data_matrix.std(axis=0))
@@ -188,5 +222,7 @@ def normalize_data(rows, method="minmax"):
             val = max(0, min(1, round(val, 6))) if method == "minmax" else round(val, 6)
             r[col] = val
 
-    print(f"✅ Normalisasi selesai ({method}) untuk {len(numeric_cols)} kolom (tanpa OHE/konstan/identitas).")
+    print(
+        f"✅ Normalisasi selesai ({method}) untuk {len(numeric_cols)} kolom (tanpa OHE/konstan/identitas)."
+    )
     return rows
