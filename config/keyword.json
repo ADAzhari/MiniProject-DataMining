@@ -1,7 +1,7 @@
 {
-  "Karir": ["kerja", "karier", "pekerjaan", "profesi", "masa depan"],
-  "Wawasan": ["pengetahuan", "belajar", "ilmu", "mengetahui", "memahami", "materi"],
-  "Prestasi": ["nilai", "ipk", "prestasi", "kompetisi", "ranking"],
-  "Motivasi Diri": ["semangat", "motivasi", "disiplin", "tujuan pribadi", "mandiri", "passion"],
-  "Tugas": ["tugas", "kuliah", "syarat", "ujian", "skripsi"]
+  "karir": ["karir", "karier", "kerja", "persiapan karier", "pekerjaan", "profesi", "masa depan"],
+  "wawasan": ["pengetahuan", "belajar", "ilmu", "mengetahui", "memahami", "materi"],
+  "prestasi": ["nilai", "ipk", "prestasi", "kompetisi", "ranking"],
+  "motivasi_diri": ["semangat", "motivasi", "disiplin", "tujuan pribadi", "mandiri", "passion"],
+  "tugas": ["tugas/ujian", "tugas", "kuliah", "syarat", "ujian", "skripsi"]
 }

@@ -29,7 +29,7 @@ def transform_data(rows, keywords_dict):
         print("❌ Data kosong!")
         return []
 
-    identity_cols = ["nama", "nim", "umur", "semester"]
+    identity_cols = ["nama", "nim", "umur", "semester", "apa alasan utama kamu belajar?"]
 
     # --- MAPPING ORDINAL ---
     ordinal_maps = {
@@ -73,24 +73,48 @@ def transform_data(rows, keywords_dict):
             elif v is None:
                 r[k] = 3.0
 
-    # --- ONE-HOT ENCODING UNTUK "ALASAN BELAJAR" ---
-    if ohe_col not in rows[0]:
-        print(f"⚠️ Kolom '{ohe_col}' tidak ditemukan.")
+   # --- ONE-HOT ENCODING UNTUK "ALASAN BELAJAR" ---
+    if ohe_col.lower() not in [k.lower() for k in rows[0].keys()]:
+        print(f"⚠️ Kolom '{ohe_col}' tidak ditemukan di data.")
+        print("Kolom yang ada:", list(rows[0].keys()))
         return rows
 
     transformed_rows = []
     for r in rows:
         new_row = {k: v for k, v in r.items()}
+    
+        # Ambil jawaban dan normalisasi teks
         jawaban = str(r.get(ohe_col, "")).lower()
+        jawaban = jawaban.replace("/", " ").replace(",", " ").replace(".", " ").strip()
+    
+        for category, keyword_list in keywords_dict.items():
+            colname = "alasan_" + category.lower().replace(" ", "_")
+            new_row[colname] = 0
+        
+            for kw in keyword_list:
+             # hapus juga tanda baca di keyword biar match adil
+                kw_clean = kw.lower().replace("/", " ").replace(",", " ").replace(".", " ").strip()
+                if kw_clean in jawaban:
+                    new_row[colname] = 1
+                    break
+    
+        transformed_rows.append(new_row)
+
+    for r in rows:
+        new_row = {k: v for k, v in r.items()}
+        jawaban = str(r.get(ohe_col, "")).lower()
+        print(f"\nJawaban asli: '{jawaban}'")
         for category, keyword_list in keywords_dict.items():
             colname = "alasan_" + category.lower().replace(" ", "_")
             new_row[colname] = 0
             for kw in keyword_list:
                 if kw.lower() in jawaban:
+                    print(f"  ✅ Cocok: '{kw}' → {colname}")
                     new_row[colname] = 1
                     break
-        transformed_rows.append(new_row)
+    transformed_rows.append(new_row)
 
     print("✅ Transformasi data selesai.")
     return transformed_rows
+
 

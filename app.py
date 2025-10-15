@@ -36,7 +36,7 @@ if uploaded_file:
                 "wawasan": ["ilmu", "pengetahuan", "wawasan", "belajar hal baru"],
                 "prestasi": ["nilai", "prestasi", "target akademik"],
                 "motivasi_diri": ["semangat", "diri sendiri", "pengembangan diri"],
-                "tugas": ["kewajiban", "tugas", "kuliah"]
+                "tugas": ["kewajiban", "tugas/ujian", "tugas", "kuliah"]
             }
 
         # === Transformasi data ===
